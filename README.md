@@ -6,11 +6,17 @@ Installation:
 ```
 ./setup.py build
 ./setup.py install
+
 ```
+
 
 Example:
 ------------
 See example.py
+
+```
+python example.py example/example_sequence.fa
+```
 
 License:
 ---------
