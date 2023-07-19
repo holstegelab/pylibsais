@@ -44,11 +44,17 @@ def get_kmer_sequence(seq, suffix_ar, kmer_idx, kmer_len):
     #get the kmer sequence
     return seq[xloc:xloc+kmer_len]
 
-def select_best_kmers(k_min, k_max, seq, index, min_count=2, min_consecutive=2, min_consecutive_bp=6):
+def select_best_kmers(k_min, k_max, seq, index, min_count=2, min_indiv_count=2, min_consecutive=2, min_consecutive_bp=6):
     """Select k-mers based on the amount of sequence masked.
 
+    :param k_min: the minimum k-mer length
+    :param k_max: the maximum k-mer length
     :param seq: the sequence to search, as prepared by prepare_suffix_string
     :param index: the index of the end of each sequence in seq, as prepared by prepare_suffix_string
+    :param min_count: the minimum number of times a k-mer should occur in the full combined sequence (including overlaps)
+    :param min_indiv_count: the minimum number of times a k-mer should occur in a single sequence (excluding overlaps)
+    :param min_consecutive: the minimum number of consecutive times a k-mer should occur in a single sequence
+    :param min_consecutive_bp: the minimum number of consecutive bases that need to be covered by the k-mer
     """
 
     #create suffix and LCP array
@@ -118,10 +124,7 @@ marked_positions = []
 
 #repeat until no (consequtive) kmers are found
 while True:    
-    #min_consecutive=2: select kmers that occur at least in stretches of 2 consequtive k-mers.
-    #min_count=2 indicates that only kmers are reported that occur at least 
-    #2 times in a single sequence (superfluous as min_consecutive=2)
-    res, sa, mask = select_best_kmers(2, 10, seq, index, min_count=2, min_consecutive=2)
+    res, sa, mask = select_best_kmers(2, 30, seq, index)
     if len(res) == 0:
         break
     
