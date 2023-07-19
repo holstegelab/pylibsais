@@ -15,8 +15,8 @@ def parse_fasta(filename):
 
 
 
-def prepare_suffix_array(sequence_dict):
-    """Prepare a suffix array for a dictionary of sequences"""
+def prepare_suffix_string(sequence_dict):
+    """Prepare a sequence dictionary in format required by pylibsais."""
     keys = []
     values = []
     index = []
@@ -33,7 +33,7 @@ def prepare_suffix_array(sequence_dict):
 
 
 def get_positions(suffix_ar, kmer_idx, kmer_cnt):
-    """Get all positions of a kmer in a sequence"""
+    """Get all (sorted) positions of a kmer in a sequence"""
     positions = suffix_ar[kmer_idx:kmer_idx+kmer_cnt]
     return np.sort(positions)
 
@@ -45,11 +45,15 @@ def get_kmer_sequence(seq, suffix_ar, kmer_idx, kmer_len):
     return seq[xloc:xloc+kmer_len]
 
 def select_best_kmers(k_min, k_max, seq, index, min_count=2, min_consecutive=2, min_consecutive_bp=6):
-    """Count k-mers in a sequence"""
+    """Select k-mers based on the amount of sequence masked.
+
+    :param seq: the sequence to search, as prepared by prepare_suffix_string
+    :param index: the index of the end of each sequence in seq, as prepared by prepare_suffix_string
+    """
 
     #create suffix and LCP array
     suffix_ar, lcp_ar = pylibsais.sais(seq)
-    #determine maximum length of valid suffixes at each position (stop at $ and # symbol)
+    #determine maximum length of valid suffixes at each position (should stop at $ and # symbol)
     mkmer_ar = pylibsais.max_suffix(seq)
     
 
@@ -89,7 +93,7 @@ def select_best_kmers(k_min, k_max, seq, index, min_count=2, min_consecutive=2, 
         kmer_s = get_kmer_sequence(seq, suffix_ar, kmer_idx, kmer_len)
         min_kmer = pylibsais.min_string(kmer_s)
         
-        #get all positions of the kmer in 'seq'
+        #get all positions of the kmer in 'seq' (can be overlapping)
         positions = get_positions(suffix_ar, kmer_idx, kmer_cnt)
 
         res.append({'kmer':kmer_s, 'min_kmer': min_kmer, 'suffix_cnt': kmer_cnt, 'total_masked': total_masked, 
@@ -104,13 +108,19 @@ def select_best_kmers(k_min, k_max, seq, index, min_count=2, min_consecutive=2, 
 
 sequence_dict = parse_fasta(sys.argv[1])
 
-seq, index= prepare_suffix_array(sequence_dict)
+seq, index= prepare_suffix_string(sequence_dict)
 
+#kmers that are selected
 selected_kmers = []
 
+#positions that are masked (list of tuples of position and kmer)
 marked_positions = []
-#repeat until no kmers are found
+
+#repeat until no (consequtive) kmers are found
 while True:    
+    #min_consecutive=2: select kmers that occur at least in stretches of 2 consequtive k-mers.
+    #min_count=2 indicates that only kmers are reported that occur at least 
+    #2 times in a single sequence (superfluous as min_consecutive=2)
     res, sa, mask = select_best_kmers(2, 10, seq, index, min_count=2, min_consecutive=2)
     if len(res) == 0:
         break
@@ -127,7 +137,7 @@ while True:
     print(pylibsais.kmer_mask(seq, sa, mask, len(selected['kmer']), selected['idx'], selected['suffix_cnt'], 2, '.')[0])
     print('\n' * 2)
     
-    #mask sequence with # symbol
+    #mask sequence with # symbol. The '2' indicates that only stretches of at least 2 consecutive kmers are masked.
     seq, marked_pos = pylibsais.kmer_mask(seq, sa, mask, len(selected['kmer']), selected['idx'], selected['suffix_cnt'], 2, '#')
     marked_positions.extend([(e, selected['kmer']) for e in marked_pos])
     #seq = seq.replace(selected['kmer'], '#' * len(selected['kmer']))
