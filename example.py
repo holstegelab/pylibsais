@@ -162,7 +162,7 @@ while True:
 for selected in selected_kmers:
     print(f"MASK KMER: {selected['kmer']}")
     print('MASKED:')
-    print(pylibsais.kmer_mask_simple(seq, selected['kmer'], '.'))
+    #print(pylibsais.kmer_mask_simple(seq, selected['kmer'], '.'))
     print('\n' * 2)
     #mask sequence with # symbol
     seq, marked_pos = pylibsais.kmer_mask_simple(seq, selected['kmer'], '#')
@@ -177,4 +177,4 @@ marked_positions.sort(key=lambda x:x[0])
 
 pr.disable()
 ps = pstats.Stats(pr).sort_stats('cumulative')
-#ps.print_stats(100)
+ps.print_stats(100)
