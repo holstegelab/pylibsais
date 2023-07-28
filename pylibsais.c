@@ -334,11 +334,6 @@ PyObject *python_kmer_repetitive(PyObject * self, PyObject *args)
     return Py_BuildValue("i", result);
 }
 
-struct kmer_count
-{
-    int sa_index;
-    int count;
-};
 
 PyObject *python_kmer_mask_potential(PyObject *self, PyObject *args)
 {
@@ -394,6 +389,7 @@ PyObject *python_kmer_mask_potential(PyObject *self, PyObject *args)
     int i;
     int real_kmer_cnt = 0;
     int pos;
+    //get all the kmer start positions
     for(i = 0; i < kmer_cnt; i++)
     {
         pos = SA[sa_idx+i];
@@ -405,6 +401,7 @@ PyObject *python_kmer_mask_potential(PyObject *self, PyObject *args)
 
         kmer_consecutive_done[i] = 0;
     }
+    //sort the kmer start positions
     qsort(kmer_start_pos, real_kmer_cnt, sizeof(int), compare_int);
 
     int mask_size = 0;
@@ -415,6 +412,7 @@ PyObject *python_kmer_mask_potential(PyObject *self, PyObject *args)
     int last_masked = -1;
     for(i = 0; i < real_kmer_cnt; i++)
     {
+        //check if we have passed the index (next sequence segment)
         while(kmer_start_pos[i] >= index[index_pos])
         {
             max_indiv_count = MAX(i - start_indiv_cum_count, max_indiv_count);
@@ -518,33 +516,29 @@ PyObject *python_kmer_mask(PyObject *self, PyObject *args)
     }
 
 	Py_UCS1 * buf = PyUnicode_1BYTE_DATA(result);
-	for(i = 0; i < n; i++)
-	{
-	    buf[i] = T[i];
-
-	}
+	memcpy(buf, T, n);
 
 
     int real_kmer_cnt = 0;
     int pos;
+
+    //first get all the kmer start positions
     for(i = 0; i < kmer_cnt; i++)
     {
         pos = SA[sa_idx+i];
         if(mask[pos] >= kmer_len)
         {
             kmer_start_pos[real_kmer_cnt] = pos;
+            kmer_consecutive_done[real_kmer_cnt] = 0;
             real_kmer_cnt++;
         }
 
-        kmer_consecutive_done[i] = 0;
     }
     qsort(kmer_start_pos, real_kmer_cnt, sizeof(int), compare_int);
-
     i = 0;
     int marked_pos = 0;
     while(i < real_kmer_cnt)
     {
-
         if(kmer_consecutive_done[i] == 0)
         {
             int consecutive_count = 1;
@@ -555,6 +549,7 @@ PyObject *python_kmer_mask(PyObject *self, PyObject *args)
             {
                 if (kmer_start_pos[j] == (kmer_start_pos[last_elem] + kmer_len))
                 {
+                    kmer_consecutive_done[j] = 1; //dont start a future round here
                     consecutive_count += 1;
                     last_elem = j;
                 }
@@ -564,22 +559,22 @@ PyObject *python_kmer_mask(PyObject *self, PyObject *args)
             if(consecutive_count >= min_consecutive)
             {
                 memset(buf + kmer_start_pos[i], replace[0], consecutive_count * kmer_len);
-            }
 
-            //mark all matches but also all inbetween matches as done
-            j = i+1;
-            while(j < real_kmer_cnt && kmer_start_pos[j] < (kmer_start_pos[i] + consecutive_count * kmer_len))
-            {
-                if((kmer_start_pos[j] - kmer_start_pos[i]) % kmer_len == 0)
+                //mark all matches but also all inbetween matches as done
+                j = i+1;
+                while(j < real_kmer_cnt && kmer_start_pos[j] < (kmer_start_pos[i] + consecutive_count * kmer_len))
                 {
-                    kmer_consecutive_done[j] = 2; //positions that are marked
-                    marked_pos += 1;
+                    if((kmer_start_pos[j] - kmer_start_pos[i]) % kmer_len == 0)
+                    {
+                        kmer_consecutive_done[j] = 2; //positions that are marked as masked
+                        marked_pos += 1;
+                    }
+                    else
+                    {
+                        kmer_consecutive_done[j] = 1;
+                    }
+                    j++;
                 }
-                else
-                {
-                    kmer_consecutive_done[j] = 1;
-                }
-                j++;
             }
 
         }
@@ -609,6 +604,12 @@ PyObject *python_kmer_mask(PyObject *self, PyObject *args)
     return Py_BuildValue("NN", result, res_np);
 
 }
+
+struct kmer_count
+{
+    int sa_index;
+    int count;
+};
 
 PyObject *python_kmer_count(PyObject *self, PyObject *args)
 {
