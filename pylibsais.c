@@ -559,7 +559,8 @@ PyObject *python_kmer_mask(PyObject *self, PyObject *args)
             if(consecutive_count >= min_consecutive)
             {
                 memset(buf + kmer_start_pos[i], replace[0], consecutive_count * kmer_len);
-
+                kmer_consecutive_done[i] = 2;
+                marked_pos += 1;
                 //mark all matches but also all inbetween matches as done
                 j = i+1;
                 while(j < real_kmer_cnt && kmer_start_pos[j] < (kmer_start_pos[i] + consecutive_count * kmer_len))
@@ -571,7 +572,7 @@ PyObject *python_kmer_mask(PyObject *self, PyObject *args)
                     }
                     else
                     {
-                        kmer_consecutive_done[j] = 1;
+                        kmer_consecutive_done[j] = 1; //inbetween positions, dont start a future round here
                     }
                     j++;
                 }
